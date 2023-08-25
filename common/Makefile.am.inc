@@ -69,8 +69,21 @@ common/flatpak-systemd-dbus-generated.c: data/org.freedesktop.systemd1.xml Makef
 common/%-dbus-generated.h: common/%-dbus-generated.c
 	@true # Built as a side-effect of the rules for the .c
 
+if ENABLE_WAYLAND_SECURITY_CONTEXT
+wayland_built_sources = common/security-context-v1-protocol.c common/security-context-v1-protocol.h
+endif
+
+wl_security_context_xml = $(WAYLAND_PROTOCOLS_DATADIR)/staging/security-context/security-context-v1.xml
+
+common/security-context-v1-protocol.c: $(wl_security_context_xml)
+	$(AM_V_GEN) $(WAYLAND_SCANNER) code $(wl_security_context_xml) $(builddir)/common/security-context-v1-protocol.c
+
+common/security-context-v1-protocol.h: $(wl_security_context_xml)
+	$(AM_V_GEN) $(WAYLAND_SCANNER) client-header $(wl_security_context_xml) $(builddir)/common/security-context-v1-protocol.h
+
 nodist_libflatpak_common_base_la_SOURCES = \
 	$(dbus_built_sources)		\
+	$(wayland_built_sources)	\
 	$(NULL)
 
 BUILT_SOURCES += $(nodist_libflatpak_common_base_la_SOURCES)
@@ -173,6 +186,8 @@ libflatpak_common_la_SOURCES = \
 	common/flatpak-run-pulseaudio.c \
 	common/flatpak-run-sockets-private.h \
 	common/flatpak-run-sockets.c \
+	common/flatpak-run-wayland-private.h \
+	common/flatpak-run-wayland.c \
 	common/flatpak-run-x11-private.h \
 	common/flatpak-run-x11.c \
 	common/flatpak-syscalls-private.h \
@@ -218,6 +233,7 @@ libflatpak_common_la_CFLAGS = \
 	$(SOUP_CFLAGS) \
 	$(SYSTEMD_CFLAGS) \
 	$(XAUTH_CFLAGS) \
+	$(WAYLAND_CLIENT_CFLAGS) \
 	$(XML_CFLAGS) \
 	$(NULL)
 libflatpak_common_la_LIBADD = \
@@ -236,6 +252,7 @@ libflatpak_common_la_LIBADD = \
 	$(SOUP_LIBS) \
 	$(SYSTEMD_LIBS) \
 	$(XAUTH_LIBS) \
+	$(WAYLAND_CLIENT_LIBS) \
 	$(XML_LIBS) \
 	$(NULL)
 

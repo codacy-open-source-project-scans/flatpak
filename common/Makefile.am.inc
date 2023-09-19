@@ -76,14 +76,13 @@ endif
 wl_security_context_xml = $(WAYLAND_PROTOCOLS_DATADIR)/staging/security-context/security-context-v1.xml
 
 common/security-context-v1-protocol.c: $(wl_security_context_xml)
-	$(AM_V_GEN) $(WAYLAND_SCANNER) code $(wl_security_context_xml) $(builddir)/common/security-context-v1-protocol.c
+	$(AM_V_GEN) $(WAYLAND_SCANNER) private-code $(wl_security_context_xml) $(builddir)/common/security-context-v1-protocol.c
 
 common/security-context-v1-protocol.h: $(wl_security_context_xml)
 	$(AM_V_GEN) $(WAYLAND_SCANNER) client-header $(wl_security_context_xml) $(builddir)/common/security-context-v1-protocol.h
 
 nodist_libflatpak_common_base_la_SOURCES = \
 	$(dbus_built_sources)		\
-	$(wayland_built_sources)	\
 	$(NULL)
 
 BUILT_SOURCES += $(nodist_libflatpak_common_base_la_SOURCES)
@@ -119,6 +118,7 @@ libflatpak_common_base_la_LIBADD = $(AM_LIBADD) $(BASE_LIBS)
 nodist_libflatpak_common_la_SOURCES = \
 	$(nodist_flatpakinclude_HEADERS)    \
 	$(systemd_dbus_built_sources)	\
+	$(wayland_built_sources)	\
 	$(xdp_dbus_built_sources) \
 	common/flatpak-enum-types.c \
 	common/flatpak-variant-private.h \

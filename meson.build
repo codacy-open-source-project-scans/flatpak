@@ -4,7 +4,7 @@
 project(
   'flatpak',
   'c',
-  version : '1.15.4',
+  version : '1.15.6',
   default_options: [
     'warning_level=2',
   ],
@@ -13,7 +13,7 @@ project(
 
 flatpak_major_version = 1
 flatpak_minor_version = 15
-flatpak_micro_version = 4
+flatpak_micro_version = 6
 flatpak_extra_version = ''
 
 flatpak_interface_age = 0
@@ -207,7 +207,7 @@ gtkdoc_dep = dependency('gtk-doc', required : get_option('gtkdoc'))
 build_gtk_doc = gtkdoc_dep.found()
 
 wayland_client = dependency('wayland-client', required : get_option('wayland_security_context'))
-wayland_scanner = dependency('wayland-scanner', version : '>= 1.15', required : get_option('wayland_security_context'))
+wayland_scanner = dependency('wayland-scanner', version : '>= 1.15', required : get_option('wayland_security_context'), native : true)
 wayland_protocols = dependency('wayland-protocols', version : '>= 1.32', required : get_option('wayland_security_context'))
 build_wayland_security_context = wayland_client.found() and wayland_scanner.found() and wayland_protocols.found()
 

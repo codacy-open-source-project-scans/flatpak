@@ -152,7 +152,7 @@
                     <listitem><para>
                         List of well-known sockets to make available in the sandbox.
                         Possible sockets: x11, wayland, fallback-x11, pulseaudio, session-bus, system-bus,
-                        ssh-auth, pcsc, cups.
+                        ssh-auth, pcsc, cups, gpg-agent, inherit-wayland-socket.
                         When making a socket available, flatpak also sets
                         well-known environment variables like DISPLAY or
                         DBUS_SYSTEM_BUS_ADDRESS to let the application
@@ -179,6 +179,7 @@
                             <listitem><para>
                                 Input devices
                                 (<filename>/dev/input</filename>).
+                                Available since 1.15.6.
                             </para></listitem></varlistentry>
 
                             <varlistentry><term><option>kvm</option></term>

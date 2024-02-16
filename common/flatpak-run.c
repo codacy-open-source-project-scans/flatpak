@@ -2643,7 +2643,8 @@ regenerate_ld_cache (GPtrArray    *base_argv_array,
   g_array_append_vals (combined_fd_array, base_fd_array->data, base_fd_array->len);
   g_array_append_vals (combined_fd_array, bwrap->fds->data, bwrap->fds->len);
 
-  /* We use LEAVE_DESCRIPTORS_OPEN to work around dead-lock, see flatpak_close_fds_workaround */
+  /* We use LEAVE_DESCRIPTORS_OPEN and close them in the child_setup
+   * to work around a deadlock in GLib < 2.60 */
   if (!g_spawn_sync (NULL,
                      (char **) bwrap->argv->pdata,
                      bwrap->envp,
@@ -2728,9 +2729,9 @@ check_parental_controls (FlatpakDecomposed *app_ref,
 
   manager = mct_manager_new (system_bus);
   app_filter = mct_manager_get_app_filter (manager, getuid (),
-                                           MCT_GET_APP_FILTER_FLAGS_INTERACTIVE,
+                                           MCT_MANAGER_GET_VALUE_FLAGS_INTERACTIVE,
                                            cancellable, &local_error);
-  if (g_error_matches (local_error, MCT_APP_FILTER_ERROR, MCT_APP_FILTER_ERROR_DISABLED))
+  if (g_error_matches (local_error, MCT_MANAGER_ERROR, MCT_MANAGER_ERROR_DISABLED))
     {
       g_info ("Skipping parental controls check for %s since parental "
               "controls are disabled globally", flatpak_decomposed_get_ref (app_ref));
@@ -3441,13 +3442,21 @@ flatpak_run_app (FlatpakDecomposed   *app_ref,
       char pid_str[64];
       g_autofree char *pid_path = NULL;
       GSpawnFlags spawn_flags;
+      GSpawnChildSetupFunc child_setup;
 
       spawn_flags = G_SPAWN_SEARCH_PATH;
       if (flags & FLATPAK_RUN_FLAG_DO_NOT_REAP ||
           (flags & FLATPAK_RUN_FLAG_BACKGROUND) == 0)
         spawn_flags |= G_SPAWN_DO_NOT_REAP_CHILD;
 
-      /* We use LEAVE_DESCRIPTORS_OPEN to work around dead-lock, see flatpak_close_fds_workaround */
+      if (flags & FLATPAK_RUN_FLAG_BACKGROUND)
+        child_setup = flatpak_bwrap_child_setup_cb;
+      else
+        child_setup = flatpak_bwrap_child_setup_inherit_fds_cb;
+
+      /* Even in the case where we want them closed, we use
+       * LEAVE_DESCRIPTORS_OPEN and close them in the child_setup
+       * to work around a deadlock in GLib < 2.60 */
       spawn_flags |= G_SPAWN_LEAVE_DESCRIPTORS_OPEN;
 
       /* flatpak_bwrap_envp_to_args() moved the environment variables to
@@ -3460,7 +3469,7 @@ flatpak_run_app (FlatpakDecomposed   *app_ref,
                           (char **) bwrap->argv->pdata,
                           bwrap->envp,
                           spawn_flags,
-                          flatpak_bwrap_child_setup_cb, bwrap->fds,
+                          child_setup, bwrap->fds,
                           &child_pid,
                           error))
         return FALSE;

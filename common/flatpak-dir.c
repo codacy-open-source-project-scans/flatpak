@@ -1842,16 +1842,16 @@ GPtrArray *
 flatpak_get_system_base_dir_locations (GCancellable *cancellable,
                                        GError      **error)
 {
-  static gsize array = 0;
+  static gsize initialized = 0;
+  static GPtrArray *array = NULL;
 
-  if (g_once_init_enter (&array))
+  if (g_once_init_enter (&initialized))
     {
-      gsize setup_value = 0;
-      setup_value = (gsize) get_system_locations (cancellable, error);
-      g_once_init_leave (&array, setup_value);
+      array = get_system_locations (cancellable, error);
+      g_once_init_leave (&initialized, 1);
     }
 
-  return (GPtrArray *) array;
+  return array;
 }
 
 GFile *
@@ -7143,7 +7143,8 @@ flatpak_dir_run_triggers (FlatpakDir   *self,
           commandline = flatpak_quote_argv ((const char **) bwrap->argv->pdata, -1);
           g_info ("Running '%s'", commandline);
 
-          /* We use LEAVE_DESCRIPTORS_OPEN to work around dead-lock, see flatpak_close_fds_workaround */
+          /* We use LEAVE_DESCRIPTORS_OPEN and close them in the child_setup
+           * to work around a deadlock in GLib < 2.60 */
           if (!g_spawn_sync ("/",
                              (char **) bwrap->argv->pdata,
                              NULL,
@@ -8443,7 +8444,7 @@ flatpak_dir_check_parental_controls (FlatpakDir    *self,
   gboolean authorized;
   gboolean repo_installation_allowed, app_is_appropriate;
   PolkitCheckAuthorizationFlags polkit_flags;
-  MctGetAppFilterFlags manager_flags;
+  MctManagerGetValueFlags manager_flags;
 
   /* Assume that root is allowed to install any ref and shouldn't have any
    * parental controls restrictions applied to them. Note that this branch
@@ -8497,13 +8498,13 @@ flatpak_dir_check_parental_controls (FlatpakDir    *self,
     }
 
   manager = mct_manager_new (dbus_connection);
-  manager_flags = MCT_GET_APP_FILTER_FLAGS_NONE;
+  manager_flags = MCT_MANAGER_GET_VALUE_FLAGS_NONE;
   if (!flatpak_dir_get_no_interaction (self))
-    manager_flags |= MCT_GET_APP_FILTER_FLAGS_INTERACTIVE;
+    manager_flags |= MCT_MANAGER_GET_VALUE_FLAGS_INTERACTIVE;
   app_filter = mct_manager_get_app_filter (manager, subject_uid,
                                            manager_flags,
                                            cancellable, &local_error);
-  if (g_error_matches (local_error, MCT_APP_FILTER_ERROR, MCT_APP_FILTER_ERROR_DISABLED))
+  if (g_error_matches (local_error, MCT_MANAGER_ERROR, MCT_MANAGER_ERROR_DISABLED))
     {
       g_info ("Skipping parental controls check for %s since parental "
               "controls are disabled globally", ref);
@@ -11513,7 +11514,7 @@ flatpak_dir_get_if_deployed (FlatpakDir        *self,
     }
 
   if (g_file_query_file_type (deploy_dir, G_FILE_QUERY_INFO_NONE, cancellable) == G_FILE_TYPE_DIRECTORY)
-    return g_object_ref (deploy_dir);
+    return g_steal_pointer (&deploy_dir);
 
   /* Maybe it was removed but is still living? */
   if (checksum != NULL)
@@ -11527,7 +11528,7 @@ flatpak_dir_get_if_deployed (FlatpakDir        *self,
       removed_deploy_dir = g_file_get_child (removed_dir, dirname);
 
       if (g_file_query_file_type (removed_deploy_dir, G_FILE_QUERY_INFO_NONE, cancellable) == G_FILE_TYPE_DIRECTORY)
-        return g_object_ref (removed_deploy_dir);
+        return g_steal_pointer (&removed_deploy_dir);
     }
 
   return NULL;
